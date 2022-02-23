@@ -1,0 +1,144 @@
+WindowManager:
+
+    Start:
+    FirstScreen:
+
+<Start>:
+    name : "start"
+    id : start
+    canvas.before:
+        Rectangle:
+            source : 'images_flip/main_back.jpg'
+            size : self.size
+
+    BoxLayout:
+        orientation : "vertical"
+        RelativeLayout:
+            Label :
+                text : "THE ALL-MIX STORE"
+                color: 1,1,1,1
+                # size_hint_y : 0.15
+                # size_hint_x : 1
+                pos_hint : {"left" : 1, "top" : 1.05}
+                font_size : dp(45)
+                font_name : 'fonts/Eurostile.ttf'
+
+        RelativeLayout:
+            orientation : "vertical"
+            pos_hint : {"left" : 1, "top" : 1}
+            Label :
+                text : "Select From Below Options :- "
+                font_size : dp(30)
+                pos_hint : {"x" : -0.15, "top" : 1.25}
+
+        GridLayout:
+            spacing : 10
+            cols : 2
+            Label :
+                text : "Amazon"
+                font_size : dp(20)
+            CheckBox :
+                on_active : root.on_checkbox_active(self, self.active, "amazon")
+
+            Label :
+                text : "Flipkart"
+                font_size : dp(20)
+            CheckBox :
+                on_active : root.on_checkbox_active(self, self.active, "flipkart")
+
+            Label :
+                text : "Snapdeal"
+                font_size : dp(20)
+            CheckBox :
+                on_active : root.on_checkbox_active(self, self.active, "snapdeal")
+
+
+        Button :
+            text : "GO --->"
+            size_hint : 0.2, 0.2
+            pos_hint : {"x" : 0.8}
+            on_release :
+                app.root.current = "first"
+                root.manager.transition.direction = "left"
+            font_size : dp(20)
+            font_name : 'fonts/Sackers-Gothic-Std-Light.ttf'
+
+
+<FirstScreen>:
+    name : "first"
+    id : first
+    canvas.before:
+        Rectangle:
+            source : 'images_flip/main_back.jpg'
+            size : self.size
+    BoxLayout:
+        orientation : "vertical"
+        spacing : 7
+        padding : 7
+
+        TextInput:
+            id : user_text
+            text: ""
+            size_hint : 1, 0.08
+            pos_hint : {"center" : 1, "top" : 1}
+            multiline : False
+            on_text_validate : root.on_proceed(self, user_text.text)
+
+        BoxLayout:
+            orientation : "vertical"
+            spacing : 5
+            BoxLayout:
+                orientation : "horizontal"
+                size : (root.width * 0.975, root.height * 0.07)
+                size_hint : (None, None)
+
+                Button:
+                    text : "<---"
+                    size : (root.width/5, root.height/15)
+                    size_hint : (None, None)
+                    on_release :
+                        root.manager.transition.direction = "right"
+                        app.root.current = "start"
+                        user_text.text = ""
+                        root.remove_all_widgets()
+
+                ProgressBar:
+                    id : progress
+                    min : 0
+                    max : 1
+                    value :root.progress
+
+                Button :
+                    size : (root.width/5, root.height/15)
+                    size_hint : (None, None)
+                    pos_hint : {"x" : 5}
+                    text : "Proceed"
+                    on_release : root.on_proceed(self, user_text.text)
+
+            BoxLayout:
+                spacing : 20
+                orientation: 'vertical'
+                ScrollView:
+                    # canvas.before:
+                    #     Color:
+                    #         rgba: 1, 0.3, 0.1, 0.4
+                    #     Rectangle:
+                    #         pos: self.pos
+                    #         size: self.size
+                    do_scroll_x: True
+                    do_scroll_y: root.scroll
+                    scroll_type:['bars']
+                    bar_width: 10
+                    bar_color: 1, 0, 0, 1   # red
+                    bar_inactive_color: 0, 0, 1, 1   # blue
+                    effect_cls: "ScrollEffect"
+                    pos_hint : {"center" : 1, "top" : 1}
+                    BoxLayout:
+                        # size : (root.width, root.height)
+                        # size_hint : (None, None)
+                        orientation: 'vertical'
+                        id: container
+                        spacing : 150
+                        size_hint_x : 1
+                        size_hint_y: None
+                        height : 11000
