@@ -1,2 +1,2 @@
 # All_Scrape_App
-Scraping and displaying details from websites at one place
+Scraping and displaying details from multiple e-commerce websites at one place
