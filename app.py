@@ -1,10 +1,18 @@
+import os
+os.environ['KIVY_IMAGE'] = 'pil'
 from functools import partial
 
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
+from kivy.config import Config
+
+Config.set('graphics', 'width', '720')
+Config.set('graphics', 'height', '660')
+
 from kivy.app import App
 
-from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty, NumericProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -13,7 +21,6 @@ from kivy.uix.image import AsyncImage
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from time import sleep
 
 
 class TheApp(App):
@@ -39,7 +46,8 @@ class Start(Screen):
 class FirstScreen(Screen):
     scroll = BooleanProperty(False)
     progress = NumericProperty(0)
-    global driver
+    driver = 0
+    scroll_height = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(FirstScreen, self).__init__(**kwargs)
@@ -47,7 +55,7 @@ class FirstScreen(Screen):
     def on_proceed(self, widget, value):
         self.ids.container.clear_widgets()
         self.scroll = True
-        info_flip = info_snap = info_amazon = []
+        info_flip = info_snap = info_amazon = info_ajio = []
         if "amazon" in Start.list_website:
             info_amazon = self.scrapping_amazon(value)
             self.progress += 0.15
@@ -56,10 +64,13 @@ class FirstScreen(Screen):
             self.progress += 0.30
         if "snapdeal" in Start.list_website:
             info_snap = self.scrapping_snapdeal(value)
+        if "ajio" in Start.list_website:
+            info_ajio = self.scrapping_ajio(value)
             self.progress += 0.50
+        self.scroll_height = (len(info_snap) + len(info_flip) + len(info_amazon) + len(info_ajio))*200
 
-        max_items = max(len(info_flip), len(info_snap), len(info_amazon))
-        # print(len(info_flip) + len(info_snap))
+        max_items = max(len(info_flip), len(info_snap), len(info_amazon), len(info_ajio))
+
         scroll_lay = BoxLayout(spacing=5, orientation='vertical', size=self.size)
         self.ids.container.add_widget(scroll_lay)
 
@@ -71,7 +82,7 @@ class FirstScreen(Screen):
                 site_button.bind(on_press=partial(self.opens, (info_amazon[i])))
                 inner_div.add_widget(site_button)
                 crop_title = info_amazon[i][1]
-                t1 = slice(40)
+                t1 = slice(25)
                 title = crop_title[t1]
                 title_button = Button(text=str(title))
                 title_button.bind(on_press=partial(self.opens, (info_amazon[i])))
@@ -126,6 +137,30 @@ class FirstScreen(Screen):
                 scroll_lay.add_widget(div)
             except IndexError:
                 pass
+            try:  # --->> AJIO
+                div = BoxLayout(spacing=15)
+                inner_div = BoxLayout(orientation='vertical', spacing=5)
+                site_button = Button(text=str(info_ajio[i][0]), size_hint=(0.2, 1), pos_hint={'x': 0.4})
+                inner_div.add_widget(site_button)
+                crop_title = info_ajio[i][1]
+                t1 = slice(40)
+                print(crop_title)
+                if crop_title == None:
+                    continue
+                else:
+                    title = crop_title[t1]
+                title_button = Button(text=str(title))
+                # title_button.bind(on_press=partial(self.opens, (info_flip[i])))
+                inner_div.add_widget(title_button)
+                inner_div.add_widget(Label(text=str(info_ajio[i][2])))
+                inner_div.add_widget(Label(text='Rating : ' + str(info_ajio[i][3])))
+                # inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_ajio[i][4])))
+                img = AsyncImage(source=info_ajio[i][4], pos=self.pos, size=(self.width, self.height))
+                div.add_widget(img)
+                div.add_widget(inner_div)
+                scroll_lay.add_widget(div)
+            except IndexError:
+                pass
             if i == max_items - 1:
                 self.progress = 1
 
@@ -154,7 +189,7 @@ class FirstScreen(Screen):
             x = 0
         else:
             x = 1
-            images_flip = soup.find_all('div', attrs={'class': '_3ywSr_'})
+            images_flip = soup.find_all('img', attrs={'class': '_2r_T1I'})
 
         product_title_list = []
         product_img_link = []
@@ -175,12 +210,10 @@ class FirstScreen(Screen):
                     product_img_link.append(link)
             else:
                 for image in images_flip:
-                    link = image.div.img['src']
+                    link = image['src']
                     product_img_link.append(link)
         except AttributeError:
             pass
-
-        print(product_img_link)
 
         for product in products:
             try:
@@ -298,14 +331,13 @@ class FirstScreen(Screen):
     def scrapping_amazon(self, prod):
         prod_name = prod.replace(' ', '+')
         product_info_amazon = []
-        s = Service(r'C:\WebDriver\chromedriver.exe')
+        s = Service(r'web_driver\chromedriver.exe')
         options = Options()
         options.add_argument('--headless')
         options.add_argument('--disable-gpu')
         adriver = webdriver.Chrome(service=s, options=options)
         url = 'https://www.amazon.in/s?k={}'.format(prod_name)
         adriver.get(url)
-        sleep(1)
         soup = BeautifulSoup(adriver.page_source, 'html.parser')
         adriver.close()
         products = soup.find_all('div', attrs={'data-component-type': 's-search-result'})
@@ -336,18 +368,75 @@ class FirstScreen(Screen):
 
         return product_info_amazon
 
+    def scrapping_ajio(self, prod):
+        product_info_ajio = []
+        prod = prod.replace(' ', '%20')
+        if 'small' in prod:
+            prod = prod.replace('small', '')
+        if 'big' in prod:
+            prod = prod.replace('big', '')
+        if 'short' in prod:
+            prod = prod.replace('short', '')
+        if 'large' in prod:
+            prod = prod.replace('large', '')
+        if 'medium' in prod:
+            prod = prod.replace('medium', '')
+        if 'tall' in prod:
+            prod = prod.replace('tall', '')
+        url = 'https://www.ajio.com/api/search?fields=SITE&currentPage=0&pageSize=50&format=json&query={}%3Arelevance&sortBy=relevance&text={}&customerType=Existing&gridColumns=3&advfilter=true&platform=Desktop'.format(prod, prod)
+        p_url = 'https://www.ajio.com/api/p/{}'
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"}
+        response = requests.session().get(url, headers=headers).json()
+        try:
+            products = response['products']
+            urls = []
+            titles = []
+            images_url = []
+            price_list = []
+
+            for product in products:
+                urls.append(p_url.format(product['fnlColorVariantData']['colorGroup']))
+
+            def info_ajio(link):
+                item = requests.session().get(link, headers=headers).json()
+                try:
+                    t = item["baseOptions"][0]["options"][0]["modelImage"]["altText"]
+                except:
+                    t = None
+                try:
+                    img_url = item['baseOptions'][0]['options'][0]['modelImage']['url']
+                except:
+                    img_url = None
+                try:
+                    price = item['baseOptions'][0]['options'][0]['priceData']['formattedValue']
+                except:
+                    price = None
+
+                titles.append(t)
+                images_url.append(img_url)
+                price_list.append(price)
+                product_info_ajio.append(('Ajio', t, price, '--', img_url))
+
+            with ThreadPoolExecutor() as executor:
+                executor.map(info_ajio, urls)
+
+            return product_info_ajio
+        except:
+            product_info_ajio = []
+            return product_info_ajio
+
+
     def opens(self, li, temp):
         if li[0] == 'Amazon' or li[0] == 'Flipkart':
-            img_url = li[5]
             prod_url = li[6]
         else:
-            img_url = li[4]
             prod_url = li[5]
 
-        s = Service(r'C:\WebDriver\chromedriver.exe')
-        self.driver = webdriver.Chrome(service=s)
-        self.driver.get(prod_url)
-        self.driver.implicitly_wait(5)
+        s = Service(r'web_driver\chromedriver.exe')
+        global driver
+        driver = webdriver.Chrome(service=s)
+        driver.get(prod_url)
+        driver.implicitly_wait(5)
 
     def remove_all_widgets(self):
         self.ids.container.clear_widgets()
