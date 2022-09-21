@@ -14,54 +14,64 @@ WindowManager:
     BoxLayout:
         orientation : "vertical"
         RelativeLayout:
+            size_hint_y : root.height/2500
             Label :
                 text : "THE ALL-MIX STORE"
                 color: 1,1,1,1
-                # size_hint_y : 0.15
-                # size_hint_x : 1
-                pos_hint : {"left" : 1, "top" : 1.05}
-                font_size : dp(45)
+                pos_hint : {"x" : 0, "y" : 0.4}
+                font_size : dp(32)
                 font_name : 'fonts/Eurostile.ttf'
-
-        RelativeLayout:
-            orientation : "vertical"
-            pos_hint : {"left" : 1, "top" : 1}
             Label :
                 text : "Select From Below Options :- "
-                font_size : dp(30)
-                pos_hint : {"x" : -0.15, "top" : 1.25}
+                font_size : dp(20)
+                pos_hint : {"x" : 0, "y" : 0.225}
 
-        GridLayout:
-            spacing : 10
-            cols : 2
             Label :
                 text : "Amazon"
                 font_size : dp(20)
+                pos_hint : {"x" : -0.2, "y" : 0.1}
             CheckBox :
+                size_hint: 0.05,0.05
+                pos_hint: {"x": 0.5, "y": 0.575}
                 on_active : root.on_checkbox_active(self, self.active, "amazon")
 
             Label :
                 text : "Flipkart"
                 font_size : dp(20)
+                pos_hint : {"x" : -0.2, "y" : -0.05}
             CheckBox :
+                size_hint: 0.05,0.05
+                pos_hint: {"x": 0.5, "y": 0.425}
                 on_active : root.on_checkbox_active(self, self.active, "flipkart")
 
             Label :
                 text : "Snapdeal"
                 font_size : dp(20)
+                pos_hint : {"x" : -0.2, "y" : -0.2}
             CheckBox :
+                size_hint: 0.05,0.05
+                pos_hint: {"x": 0.5, "y": 0.28}
                 on_active : root.on_checkbox_active(self, self.active, "snapdeal")
 
 
-        Button :
-            text : "GO --->"
-            size_hint : 0.2, 0.2
-            pos_hint : {"x" : 0.8}
-            on_release :
-                app.root.current = "first"
-                root.manager.transition.direction = "left"
-            font_size : dp(20)
-            font_name : 'fonts/Sackers-Gothic-Std-Light.ttf'
+            Label :
+                text : "Ajio"
+                font_size : dp(20)
+                pos_hint : {"x" : -0.2, "y" : -0.35}
+            CheckBox :
+                size_hint: 0.05,0.05
+                pos_hint: {"x": 0.5, "y": 0.13}
+                on_active : root.on_checkbox_active(self, self.active, "ajio")
+
+            Button :
+                size_hint : 0.25,0.1
+                text : "GO --->"
+                pos_hint : {"right" : 1}
+                on_release :
+                    app.root.current = "first"
+                    root.manager.transition.direction = "left"
+                font_size : dp(20)
+                font_name : 'fonts/Sackers-Gothic-Std-Light.ttf'
 
 
 <FirstScreen>:
@@ -128,9 +138,11 @@ WindowManager:
                     do_scroll_x: True
                     do_scroll_y: root.scroll
                     scroll_type:['bars']
+                    scroll_wheel_distance : 250
+                    bar_height : 25
                     bar_width: 10
                     bar_color: 1, 0, 0, 1   # red
-                    bar_inactive_color: 0, 0, 1, 1   # blue
+                    bar_inactive_color: 0.1, 1, 0.1, 1   # blue
                     effect_cls: "ScrollEffect"
                     pos_hint : {"center" : 1, "top" : 1}
                     BoxLayout:
@@ -141,4 +153,7 @@ WindowManager:
                         spacing : 150
                         size_hint_x : 1
                         size_hint_y: None
-                        height : 11000
+                        height : root.scroll_height
+
+
+
