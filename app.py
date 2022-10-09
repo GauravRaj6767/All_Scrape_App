@@ -1,37 +1,39 @@
-import os
-os.environ['KIVY_IMAGE'] = 'pil'
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 import requests
-from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
-from kivy.config import Config
-
-Config.set('graphics', 'width', '720')
-Config.set('graphics', 'height', '660')
-
-from kivy.app import App
-
-from kivy.properties import BooleanProperty, NumericProperty
+from kivy.clock import mainthread
+from kivy.factory import Factory
+from kivy.lang import Builder
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.image import AsyncImage
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+from kivy.uix.screenmanager import Screen
+from kivymd.app import MDApp
+from kivymd.uix.button import MDRoundFlatIconButton
+from kivymd.uix.card import MDCard
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 
-class TheApp(App):
-    pass
+class RunningPopup(Popup):
+    fpop = None
+
+    def set_pop(self, pwin):
+        self.fpop = pwin
+
+    def close(self):
+        self.fpop.dismiss()
 
 
-class WindowManager(ScreenManager):
-    pass
+class ScreenUI(Screen):
+    def __init__(self):
+        super().__init__()
 
-
-class Start(Screen):
     list_website = []
 
     def on_checkbox_active(self, instance, value, website):
@@ -42,127 +44,220 @@ class Start(Screen):
             if website in self.list_website:
                 self.list_website.remove(website)
 
+        print(self.list_website)
 
-class FirstScreen(Screen):
-    scroll = BooleanProperty(False)
-    progress = NumericProperty(0)
-    driver = 0
-    scroll_height = NumericProperty(0)
 
-    def __init__(self, **kwargs):
-        super(FirstScreen, self).__init__(**kwargs)
+class Search(Screen):
+    info_amazon = []
+    info_flip = []
+    info_snap = []
+    info_ajio = []
 
-    def on_proceed(self, widget, value):
-        self.ids.container.clear_widgets()
-        self.scroll = True
-        info_flip = info_snap = info_amazon = info_ajio = []
-        if "amazon" in Start.list_website:
-            info_amazon = self.scrapping_amazon(value)
-            self.progress += 0.15
-        if "flipkart" in Start.list_website:
-            info_flip = self.scrapping_flipkart(value)
-            self.progress += 0.30
-        if "snapdeal" in Start.list_website:
-            info_snap = self.scrapping_snapdeal(value)
-        if "ajio" in Start.list_website:
-            info_ajio = self.scrapping_ajio(value)
-            self.progress += 0.50
-        self.scroll_height = (len(info_snap) + len(info_flip) + len(info_amazon) + len(info_ajio))*200
+    def __init__(self):
+        super().__init__()
 
-        max_items = max(len(info_flip), len(info_snap), len(info_amazon), len(info_ajio))
+    def opens(self, li, temp):
+        if li[0] == 'Amazon' or li[0] == 'Flipkart':
+            prod_url = li[6]
+        else:
+            prod_url = li[5]
 
-        scroll_lay = BoxLayout(spacing=5, orientation='vertical', size=self.size)
-        self.ids.container.add_widget(scroll_lay)
+        s = Service(r'web_driver\chromedriver.exe')
+        global driver
+        driver = webdriver.Chrome(service=s)
+        driver.get(prod_url)
+        driver.implicitly_wait(5)
 
+    def on_proceed(self):
+        self.ids.scroll_list.clear_widgets()
+        self.pop_up = RunningPopup()
+        self.pop_up.open()
+        self.info_amazon = self.info_ajio = self.info_snap = self.info_flip = []
+
+        thread2 = threading.Thread(target=self.scrapping_start)
+        thread2.start()
+
+    def scrapping_start(self):
+        value = self.ids.product.text
+
+        if "amazon" in ScreenUI.list_website:
+            self.info_amazon = self.scrapping_amazon(value)
+            print(len(self.info_amazon))
+
+        if "flipkart" in ScreenUI.list_website:
+            self.info_flip = self.scrapping_flipkart(value)
+
+        if "snapdeal" in ScreenUI.list_website:
+            self.info_snap = self.scrapping_snapdeal(value)
+
+        if "ajio" in ScreenUI.list_website:
+            self.info_ajio = self.scrapping_ajio(value)
+
+        print("SCRAPED")
+
+        self.display_results(self.info_amazon, self.info_flip, self.info_ajio, self.info_snap)
+
+    @mainthread
+    def display_results(self, info_amazon, info_flip, info_ajio, info_snap):
+        max_items = max(len(info_amazon), len(info_snap), len(info_ajio), len(info_flip))
         for i in range(max_items):
+
             try:  # --->> AMAZON
-                div = BoxLayout(spacing=15)
-                inner_div = BoxLayout(orientation='vertical', spacing=5)
-                site_button = Button(text=str(info_amazon[i][0]), size_hint=(0.2, 1), pos_hint={'x': 0.4})
+                img_div = BoxLayout()
+                img = AsyncImage(source=info_amazon[i][5], pos_hint={'center_x': 0}, size=(self.width, self.height))
+                img_div.add_widget(img)
+                inner_div = BoxLayout(orientation='vertical')
+                crop_title = info_amazon[i][1]
+                t1 = slice(18)
+                prod_name = crop_title[t1]
+
+                inner_div.add_widget(Label(text=str(info_amazon[i][0]), color=[0, 0, 0, 1]))
+                site_button = MDRoundFlatIconButton(text=str(prod_name), text_color='black',
+                                                    pos_hint={"center_x": 0.5}, icon='fullscreen')
                 site_button.bind(on_press=partial(self.opens, (info_amazon[i])))
                 inner_div.add_widget(site_button)
-                crop_title = info_amazon[i][1]
-                t1 = slice(25)
-                title = crop_title[t1]
-                title_button = Button(text=str(title))
-                title_button.bind(on_press=partial(self.opens, (info_amazon[i])))
-                inner_div.add_widget(title_button)
-                inner_div.add_widget(Label(text='Rs.' + str(info_amazon[i][2])))
-                inner_div.add_widget(Label(text='Rating : ' + str(info_amazon[i][3])))
-                inner_div.add_widget(Label(text='Total Ratings : ' + str(info_amazon[i][4])))
-                img = AsyncImage(source=info_amazon[i][5], pos=self.pos, size=self.size)
-                div.add_widget(img)
-                div.add_widget(inner_div)
-                scroll_lay.add_widget(div)
+                inner_div.add_widget(Label(text='Rs.' + str(info_amazon[i][2]), color=[0, 0, 0, 1]))
+                inner_div.add_widget(Label(text='Rating : ' + str(info_amazon[i][3]), color=[0, 0, 0, 1]))
+                inner_div.add_widget(Label(text='Total Ratings : ' + str(info_amazon[i][4]), color=[0, 0, 0, 1]))
+
+                card = MDCard(orientation='horizontal', pos_hint={'center_x': 0.5, 'center_y': 0.7}, size_hint=(.9, None), height=210, md_bg_color=[1, 1, 1, 1])
+                card.add_widget(img_div)
+                card.add_widget(inner_div)
+
+                self.ids.scroll_list.add_widget(card)
+
             except IndexError:
                 pass
-            try:  # --->> FLIPKART
-                div = BoxLayout(spacing=15)
-                inner_div = BoxLayout(orientation='vertical', spacing=5)
-                site_button = Button(text=str(info_flip[i][0]), size_hint=(0.2, 1), pos_hint={'x': 0.4})
-                site_button.bind(on_press=partial(self.opens, (info_flip[i])))
-                inner_div.add_widget(site_button)
-                crop_title = info_flip[i][1]
-                t1 = slice(40)
-                title = crop_title[t1]
-                title_button = Button(text=str(title))
-                title_button.bind(on_press=partial(self.opens, (info_flip[i])))
-                inner_div.add_widget(title_button)
-                inner_div.add_widget(Label(text=str(info_flip[i][2])))
-                inner_div.add_widget(Label(text='Rating : ' + str(info_flip[i][3])))
-                inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_flip[i][4])))
-                img = AsyncImage(source=info_flip[i][5], pos=self.pos, size=(self.width, self.height))
-                div.add_widget(img)
-                div.add_widget(inner_div)
-                scroll_lay.add_widget(div)
-            except IndexError:
-                pass
+
             try:  # --->> SNAPDEAL
-                div = BoxLayout(spacing=15)
-                inner_div = BoxLayout(orientation='vertical', spacing=5)
-                site_button = Button(text=str(info_snap[i][0]), size_hint=(0.2, 1), pos_hint={'x': 0.4})
+                img_div = BoxLayout()
+                img = AsyncImage(source=info_snap[i][4], pos_hint={'center_x': 0}, size=(self.width, self.height))
+                img_div.add_widget(img)
+                inner_div = BoxLayout(orientation='vertical')
+                crop_title = info_snap[i][1]
+                t1 = slice(18)
+                prod_name = crop_title[t1]
+
+                inner_div.add_widget(Label(text=str(info_snap[i][0]), color=[0, 0, 0, 1]))
+                site_button = MDRoundFlatIconButton(text=str(prod_name), text_color='black',
+                                                    pos_hint={"center_x": 0.5}, icon='fullscreen')
                 site_button.bind(on_press=partial(self.opens, (info_snap[i])))
                 inner_div.add_widget(site_button)
-                crop_title = info_snap[i][1]
-                t1 = slice(40)
-                title = crop_title[t1]
-                title_button = Button(text=str(title))
-                title_button.bind(on_press=partial(self.opens, (info_snap[i])))
-                inner_div.add_widget(title_button)
-                inner_div.add_widget(Label(text=str(info_snap[i][2])))
-                inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_snap[i][3])))
-                img = AsyncImage(source=info_snap[i][4], pos=self.pos, size=(self.width, self.height))
-                div.add_widget(img)
-                div.add_widget(inner_div)
-                scroll_lay.add_widget(div)
+                inner_div.add_widget(Label(text=info_snap[i][2], color=[0, 0, 0, 1]))
+                inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_snap[i][3]), color=[0, 0, 0, 1]))
+
+                card = MDCard(orientation='horizontal', pos_hint={'center_x': 0.5, 'center_y': 0.7}, size_hint=(.9, None), height=210, md_bg_color=[1, 1, 1, 1] )
+                card.add_widget(img_div)
+                card.add_widget(inner_div)
+                self.ids.scroll_list.add_widget(card)
+
             except IndexError:
                 pass
-            try:  # --->> AJIO
-                div = BoxLayout(spacing=15)
-                inner_div = BoxLayout(orientation='vertical', spacing=5)
-                site_button = Button(text=str(info_ajio[i][0]), size_hint=(0.2, 1), pos_hint={'x': 0.4})
+
+            try:  # --->> FLIPKART
+                img_div = BoxLayout()
+                img = AsyncImage(source=info_flip[i][5], pos_hint={'center_x': 0}, size=(self.width, self.height))
+                img_div.add_widget(img)
+                inner_div = BoxLayout(orientation='vertical')
+                crop_title = info_flip[i][1]
+                t1 = slice(18)
+                prod_name = crop_title[t1]
+
+                inner_div.add_widget(Label(text=str(info_flip[i][0]), color=[0, 0, 0, 1]))
+                site_button = MDRoundFlatIconButton(text=str(prod_name), text_color='black',
+                                                           pos_hint={"center_x": 0.5}, icon='fullscreen')
+                site_button.bind(on_press=partial(self.opens, (info_flip[i])))
                 inner_div.add_widget(site_button)
+                inner_div.add_widget(Label(text=info_flip[i][2], color=[0, 0, 0, 1]))
+                inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_flip[i][3]), color=[0, 0, 0, 1]))
+
+                card = MDCard(orientation='horizontal', pos_hint={'center_x': 0.5, 'center_y': 0.7},size_hint=(.9, None), height=210, md_bg_color=[1, 1, 1, 1])
+                card.add_widget(img_div)
+                card.add_widget(inner_div)
+                self.ids.scroll_list.add_widget(card)
+
+            except IndexError:
+                pass
+
+            try:  # --->> AJIO
+                img_div = BoxLayout()
+                img = AsyncImage(source=info_ajio[i][4], pos_hint={'center_x': 0}, size=(self.width, self.height))
+                img_div.add_widget(img)
+                inner_div = BoxLayout(orientation='vertical')
+
                 crop_title = info_ajio[i][1]
-                t1 = slice(40)
-                print(crop_title)
+                t1 = slice(18)
+
                 if crop_title == None:
                     continue
                 else:
-                    title = crop_title[t1]
-                title_button = Button(text=str(title))
-                # title_button.bind(on_press=partial(self.opens, (info_flip[i])))
-                inner_div.add_widget(title_button)
-                inner_div.add_widget(Label(text=str(info_ajio[i][2])))
-                inner_div.add_widget(Label(text='Rating : ' + str(info_ajio[i][3])))
-                # inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_ajio[i][4])))
-                img = AsyncImage(source=info_ajio[i][4], pos=self.pos, size=(self.width, self.height))
-                div.add_widget(img)
-                div.add_widget(inner_div)
-                scroll_lay.add_widget(div)
+                    prod_name = crop_title[t1]
+
+                inner_div.add_widget(Label(text=str(info_ajio[i][0]), color=[0, 0, 0, 1]))
+                inner_div.add_widget(MDRoundFlatIconButton(text=str(prod_name), text_color='black',
+                                                           pos_hint={"center_x": 0.5}, icon='fullscreen'))
+                inner_div.add_widget(Label(text=info_ajio[i][2], color=[0, 0, 0, 1]))
+                inner_div.add_widget(Label(text=' Total Ratings : ' + str(info_ajio[i][3]), color=[0, 0, 0, 1]))
+
+                card = MDCard(orientation='horizontal', pos_hint={'center_x': 0.5, 'center_y': 0.7}, size_hint=(.9, None), height=210, md_bg_color=[1, 1, 1, 1])
+                card.add_widget(img_div)
+                card.add_widget(inner_div)
+                self.ids.scroll_list.add_widget(card)
+
             except IndexError:
                 pass
-            if i == max_items - 1:
-                self.progress = 1
+
+        print("DISPLAYED")
+        self.pop_up.dismiss()
+
+    def scrapping_snapdeal(self, prod):
+        prod.replace(' ', '%20')
+        url = 'https://www.snapdeal.com/search?keyword={}&santizedKeyword=&catId=0&categoryId=0&suggested=false&vertical=p&noOfResults=20&searchState=&clickSrc=go_header&lastKeyword=&prodCatId=&changeBackToAll=false&foundInAll=false&categoryIdSearched=&cityPageUrl=&categoryUrl=&url=&utmContent=&dealDetail=&sort=rlvncy'.format(prod)
+        html_text = requests.get(url).text
+        soup = BeautifulSoup(html_text, 'lxml')
+        product_title_list = []
+        product_price_list = []
+        product_no_rating_list = []
+        product_info_snapdeal = []
+        product_img_link = []
+        product_link_list = []
+        products = soup.find_all('div', class_='product-desc-rating')
+        i = int(0)
+        images_snap = soup.find_all('picture', attrs={'class': 'picture-elem'})
+
+        try:
+            for image in images_snap:
+                link = image.find('source')['srcset']
+                product_img_link.append(link)
+        except AttributeError:
+            pass
+
+        for product in products:
+            try:
+                product_title_list.append(product.find('p', class_='product-title').text)
+            except AttributeError:
+                product_title_list.append('NA')
+            try:
+                product_price_list.append(product.find('span', class_='lfloat product-price').text)
+            except AttributeError:
+                product_price_list.append('NA')
+            try:
+                product_no_rating_list.append(product.find('p', class_='product-rating-count').text)
+            except AttributeError:
+                product_no_rating_list.append('NA')
+            try:
+                product_link_list.append(product.a['href'])
+            except AttributeError:
+                product_link_list.append('NA')
+
+            try:
+                product_info_snapdeal.append(('Snapdeal', product_title_list[i], product_price_list[i], product_no_rating_list[i], product_img_link[i], product_link_list[i]))
+            except IndexError:
+                product_info_snapdeal.append(('Snapdeal', 'NA'))
+
+            i += 1
+
+        return product_info_snapdeal
 
     def scrapping_flipkart(self, prod):
         prod_name = prod.replace(' ', '%20')
@@ -269,7 +364,6 @@ class FirstScreen(Screen):
             except AttributeError:
                 product_no_rating_list.append('NA')
 
-            self.progress += 0.025
             try:
                 product_info_flipkart.append(('Flipkart', product_title_list[i], product_price_list[i], product_rating_list[i], product_no_rating_list[i], product_img_link[i], product_link[i]))
             except IndexError:
@@ -277,96 +371,6 @@ class FirstScreen(Screen):
             i += 1
 
         return product_info_flipkart
-
-    def scrapping_snapdeal(self, prod):
-        prod.replace(' ', '%20')
-        url = 'https://www.snapdeal.com/search?keyword={}&santizedKeyword=&catId=0&categoryId=0&suggested=false&vertical=p&noOfResults=20&searchState=&clickSrc=go_header&lastKeyword=&prodCatId=&changeBackToAll=false&foundInAll=false&categoryIdSearched=&cityPageUrl=&categoryUrl=&url=&utmContent=&dealDetail=&sort=rlvncy'.format(prod)
-        html_text = requests.get(url).text
-        soup = BeautifulSoup(html_text, 'lxml')
-        product_title_list = []
-        product_price_list = []
-        product_no_rating_list = []
-        product_info_snapdeal = []
-        product_img_link = []
-        product_link_list = []
-        products = soup.find_all('div', class_='product-desc-rating')
-        i = int(0)
-        images_snap = soup.find_all('picture', attrs={'class': 'picture-elem'})
-
-        try:
-            for image in images_snap:
-                link = image.find('source')['srcset']
-                product_img_link.append(link)
-        except AttributeError:
-            pass
-
-        for product in products:
-            try:
-                product_title_list.append(product.find('p', class_='product-title').text)
-            except AttributeError:
-                product_title_list.append('NA')
-            try:
-                product_price_list.append(product.find('span', class_='lfloat product-price').text)
-            except AttributeError:
-                product_price_list.append('NA')
-            try:
-                product_no_rating_list.append(product.find('p', class_='product-rating-count').text)
-            except AttributeError:
-                product_no_rating_list.append('NA')
-            try:
-                product_link_list.append(product.a['href'])
-            except AttributeError:
-                product_link_list.append('NA')
-
-            self.progress += 0.025
-            try:
-                product_info_snapdeal.append(('Snapdeal', product_title_list[i], product_price_list[i], product_no_rating_list[i], product_img_link[i], product_link_list[i]))
-            except IndexError:
-                product_info_snapdeal.append(('Snapdeal', 'NA'))
-
-            i += 1
-
-        return product_info_snapdeal
-
-    def scrapping_amazon(self, prod):
-        prod_name = prod.replace(' ', '+')
-        product_info_amazon = []
-        s = Service(r'web_driver\chromedriver.exe')
-        options = Options()
-        options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        adriver = webdriver.Chrome(service=s, options=options)
-        url = 'https://www.amazon.in/s?k={}'.format(prod_name)
-        adriver.get(url)
-        soup = BeautifulSoup(adriver.page_source, 'html.parser')
-        adriver.close()
-        products = soup.find_all('div', attrs={'data-component-type': 's-search-result'})
-        for i in range(len(products)):
-            title = products[i].find('a', attrs={'class': 'a-link-normal s-underline-text s-underline-link-text s-link-style a-text-normal'}).span.text
-            try:
-                price = products[i].find('span', attrs={'class': 'a-price-whole'}).text
-            except AttributeError:
-                price = "NA"
-            try:
-                rating = products[i].find('span', attrs={'class': 'a-icon-alt'}).text
-            except AttributeError:
-                rating = "NA"
-            try:
-                num_rating = products[i].find('span', attrs={'class': 'a-size-base'}).text
-            except AttributeError:
-                num_rating = "NA"
-            try:
-                img_link = products[i].find('img', attrs={'class': 's-image'})['src']
-            except AttributeError:
-                img_link = "NA"
-            try:
-                prod_link = 'https://www.amazon.in' + products[i].find('a', attrs={'class': 'a-link-normal s-underline-text s-underline-link-text s-link-style a-text-normal'})['href']
-            except AttributeError:
-                prod_link = "NA"
-            product_info_amazon.append(('Amazon', title, price, rating, num_rating, img_link, prod_link))
-            self.progress += 0.25
-
-        return product_info_amazon
 
     def scrapping_ajio(self, prod):
         product_info_ajio = []
@@ -425,22 +429,56 @@ class FirstScreen(Screen):
             product_info_ajio = []
             return product_info_ajio
 
-
-    def opens(self, li, temp):
-        if li[0] == 'Amazon' or li[0] == 'Flipkart':
-            prod_url = li[6]
-        else:
-            prod_url = li[5]
-
+    def scrapping_amazon(self, prod):
+        prod_name = prod.replace(' ', '+')
+        product_info_amazon = []
         s = Service(r'web_driver\chromedriver.exe')
-        global driver
-        driver = webdriver.Chrome(service=s)
-        driver.get(prod_url)
-        driver.implicitly_wait(5)
+        options = Options()
+        options.add_argument('--headless')
+        options.add_argument('--disable-gpu')
+        adriver = webdriver.Chrome(service=s, options=options)
+        url = 'https://www.amazon.in/s?k={}'.format(prod_name)
+        adriver.get(url)
+        soup = BeautifulSoup(adriver.page_source, 'html.parser')
 
-    def remove_all_widgets(self):
-        self.ids.container.clear_widgets()
-        self.progress = 0
+        adriver.close()
+        products = soup.find_all('div', attrs={'data-component-type': 's-search-result'})
+        for i in range(len(products)):
+            title = products[i].find('a', attrs={'class': 'a-link-normal s-underline-text s-underline-link-text s-link-style a-text-normal'}).span.text
+            try:
+                price = products[i].find('span', attrs={'class': 'a-price-whole'}).text
+            except AttributeError:
+                price = "NA"
+            try:
+                rating = products[i].find('span', attrs={'class': 'a-icon-alt'}).text
+            except AttributeError:
+                rating = "NA"
+            try:
+                num_rating = products[i].find('span', attrs={'class': 'a-size-base s-underline-text'}).text
+            except AttributeError:
+                num_rating = "NA"
+            try:
+                img_link = products[i].find('img', attrs={'class': 's-image'})['src']
+            except AttributeError:
+                img_link = "NA"
+            try:
+                prod_link = 'https://www.amazon.in' + products[i].find('a', attrs={'class': 'a-link-normal s-underline-text s-underline-link-text s-link-style a-text-normal'})['href']
+            except AttributeError:
+                prod_link = "NA"
+            product_info_amazon.append(('Amazon', title, price, rating, num_rating, img_link, prod_link))
+
+        return product_info_amazon
 
 
-TheApp().run()
+class ScrapeApp(MDApp):
+    def build(self):
+        Builder.load_file("app.kv")
+        self.theme_cls.theme_style = "Dark"
+        sm = Factory.ScreenManager()
+        sm.add_widget(ScreenUI())
+        sm.add_widget(Search())
+        return sm
+
+
+ScrapeApp().run()
+
