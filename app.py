@@ -1,3 +1,5 @@
+import os
+os.environ['KIVY_IMAGE'] = 'pil'
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -18,6 +20,7 @@ from kivymd.uix.card import MDCard
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+import android
 
 
 class RunningPopup(Popup):

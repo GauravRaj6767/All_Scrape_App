@@ -1,0 +1,221 @@
+<Check@MDCheckbox>:
+    size_hint: None, None
+    size: dp(48), dp(48)
+
+
+<ScreenUI>:
+    name: "screenui"
+    BoxLayout:
+        canvas:
+            Color:
+                rgb: [0.1, .1, .2]
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        orientation: 'vertical'
+
+        RelativeLayout:
+            Label:
+                text: "All Site Scrape"
+                color: 1,0,1,1
+                pos_hint: {"center_x": 0.5, "center_y": 0.65}
+                font_size: 50
+                font_name: 'fonts/Matterland.ttf'
+
+            Label:
+                text: "Select your required Websites\n      and Press Button ---- >"
+                font_size: 25
+                pos_hint: {"center_x": 0.5, "center_y": 0.25}
+
+            MDFillRoundFlatButton:
+                text: "GO !!"
+                font_size: 25
+                pos_hint: {"center_x": 0.85, "center_y": 0.15}
+                size_hint: 0.2, 0.2
+                on_release:
+                    app.root.current = "search"
+                    root.manager.transition.direction = "left"
+
+        GridLayout:
+            cols: 2
+            spacing: '10dp'
+            padding: '10dp'
+            size_hint_y: root.height/300
+
+            MDCard:
+                radius: 50
+                adaptive_size: True
+                md_bg_color: 0.275, 0.65, 0.8, 1
+                BoxLayout:
+                    padding: '10dp'
+                    orientation: 'vertical'
+                    BoxLayout:
+                        size_hint_x: 0.5
+                        pos_hint: {"center_x": 0.5}
+                        Label:
+                            text: "Amazon"
+                            font_size: 30
+                            size_hint_x: 5
+                            # font_name: 'fonts/VintageKing.ttf'
+                            pos_hint: {"center_x": 0.5 , "y": -0.2}
+                    RelativeLayout:
+                        MDCheckbox:
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {"center_x": 0.5, "center_y": 0}
+                            on_active: root.on_checkbox_active(self, self.active, "amazon")
+                    Image:
+                        source:"logo/amaz_logo.png"
+                        size_hint_y: 7
+
+
+
+            MDCard:
+                radius: 50
+                adaptive_size: True
+                md_bg_color: 0.275, 0.65, 0.8, 1
+                BoxLayout:
+                    padding: '10dp'
+                    orientation: 'vertical'
+                    BoxLayout:
+                        size_hint_x: 0.5
+                        pos_hint: {"center_x": 0.5}
+                        Label:
+                            text: "Flipkart"
+                            font_size: 30
+                            size_hint_x: 5
+                            # font_name: 'fonts/VintageKing.ttf'
+                            pos_hint: {"center_x": 0.5 , "y": -0.2}
+                    RelativeLayout:
+                        MDCheckbox:
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {"center_x": 0.5 , "center_y": 0}
+                            on_active: root.on_checkbox_active(self, self.active, "flipkart")
+                    Image:
+                        source:"logo/f_logo.png"
+                        size_hint_y: 7
+
+            MDCard:
+                radius: 50
+                adaptive_size: True
+                md_bg_color: 0.275, 0.65, 0.8, 1
+                BoxLayout:
+                    padding: '10dp'
+                    orientation: 'vertical'
+                    BoxLayout:
+                        size_hint_x: 0.5
+                        pos_hint: {"center_x": 0.5}
+                        Label:
+                            text: "Snapdeal"
+                            font_size: 30
+                            size_hint_x: 5
+                            # font_name: 'fonts/VintageKing.ttf'
+                            pos_hint: {"center_x": 0.5 , "y": -0.2}
+                    RelativeLayout:
+                        MDCheckbox:
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {"center_x": 0.5 , "center_y": 0}
+                            on_active: root.on_checkbox_active(self, self.active, "snapdeal")
+                    Image:
+                        source:"logo/snap_logo.png"
+                        size_hint_y: 5
+
+            MDCard:
+                radius: 50
+                adaptive_size: True
+                md_bg_color: 0.275, 0.65, 0.8, 1
+                BoxLayout:
+                    padding: '10dp'
+                    orientation: 'vertical'
+                    BoxLayout:
+                        size_hint_x: 0.5
+                        pos_hint: {"center_x": 0.5}
+                        Label:
+                            text: "Ajio"
+                            font_size: 30
+                            size_hint_x: 5
+                            # font_name: 'fonts/VintageKing.ttf'
+                            pos_hint: {"center_x": 0.5 , "y": 0}
+                    RelativeLayout:
+                        MDCheckbox:
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {"center_x": 0.5 , "center_y": 0.5}
+                            on_active: root.on_checkbox_active(self, self.active, "ajio")
+                    Image:
+                        source:"logo/ajio_logo.png"
+                        size_hint_y: 2.5
+
+
+<Search>
+    name: "search"
+    BoxLayout:
+        canvas:
+            Color:
+                rgb: [0.1, .1, .2]
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        orientation: 'vertical'
+        RelativeLayout:
+            MDIconButton:
+                icon: 'keyboard-backspace'
+                # size_hint: 0.5, 0.5
+                pos_hint: {"center_x": 0.04, "center_y": 0.91}
+                on_release:
+                    app.root.current = "screenui"
+                    root.manager.transition.direction = "right"
+            MDTextFieldRect:
+                id: product
+                # hint_text: "ENTER PRODUCT NAME "
+                font_size: 18
+                multiline: False
+                size_hint: 0.8, 0.0575
+                pos_hint: {"center_x": 0.48, "center_y": 0.91}
+                on_text_validate : root.on_proceed()
+            MDIconButton:
+                icon: 'file-find'
+                size_hint: 0.15, 0.15
+                pos_hint: {"center_x": 0.925, "center_y": 0.91}
+                on_release : root.on_proceed()
+
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint: 1.08, 0.85
+                pos_hint: {"center_x": 0.5}
+
+                ScrollView:
+                    scroll_wheel_distance : 250
+                    bar_height : 45
+                    bar_width: self.width * 0.055
+                    bar_color: 1, 0, 0, 1   # red
+                    bar_inactive_color: 0.1, 1, 0.1, 1   # green
+                    effect_cls: "ScrollEffect"
+                    pos_hint : {"center" : 1, "top" : 1}
+                    BoxLayout:
+                        id: scroll_list
+                        spacing: 20
+                        padding: 15
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+
+
+
+<RunningPopup>:
+    title: "LOADING !!"
+    size_hint: 0.5, 0.45
+    auto_dismiss: False
+    BoxLayout:
+        Image:
+            size: root.width, root.height/1.35
+            source: 'loading.gif'
+            allow_stretch: True
+            keep_ratio: False
+            # size_hint_y: None
+            anim_delay: 0.05
+            mipmap: True
+
